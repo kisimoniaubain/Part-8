@@ -1,4 +1,3 @@
-
 const { ApolloServer } = require("@apollo/server")
 const { startStandaloneServer } = require("@apollo/server/standalone")
 
@@ -96,7 +95,7 @@ const typeDefs = `
   type Query {
     bookCount: Int!
     authorCount: Int!
-    allBooks: [Book!]!
+    allBooks(author: String): [Book!]!
     allAuthors: [Author!]!
   }
 `
@@ -107,7 +106,13 @@ const resolvers = {
 
     authorCount: () => authors.length,
 
-    allBooks: () => books,
+    allBooks: (root, args) => {
+      if (!args.author) {
+        return books
+      }
+
+      return books.filter((book) => book.author === args.author)
+    },
 
     allAuthors: () =>
       authors.map((author) => ({
@@ -129,3 +134,4 @@ startStandaloneServer(server, {
 }).then(({ url }) => {
   console.log(`Server ready at ${url}`)
 })
+

@@ -1,4 +1,3 @@
-
 const { ApolloServer } = require("@apollo/server")
 const { startStandaloneServer } = require("@apollo/server/standalone")
 const { v1: uuid } = require("uuid")
@@ -110,24 +109,34 @@ const typeDefs = `
       published: Int!
       genres: [String!]!
     ): Book!
+
+    editAuthor(
+      name: String!
+      setBornTo: Int!
+    ): Author
   }
 `
 
 const resolvers = {
   Query: {
+    // Exercise 8.1
     bookCount: () => books.length,
 
+    // Exercise 8.1
     authorCount: () => authors.length,
 
+    // Exercises 8.2, 8.4 and 8.5
     allBooks: (root, args) => {
       let filteredBooks = books
 
+      // Filter by author
       if (args.author) {
         filteredBooks = filteredBooks.filter(
           (book) => book.author === args.author
         )
       }
 
+      // Filter by genre
       if (args.genre) {
         filteredBooks = filteredBooks.filter(
           (book) => book.genres.includes(args.genre)
@@ -137,6 +146,7 @@ const resolvers = {
       return filteredBooks
     },
 
+    // Exercise 8.3
     allAuthors: () =>
       authors.map((author) => ({
         ...author,
@@ -147,6 +157,7 @@ const resolvers = {
   },
 
   Mutation: {
+    // Exercise 8.6
     addBook: (root, args) => {
       const book = {
         title: args.title,
@@ -156,12 +167,15 @@ const resolvers = {
         id: uuid(),
       }
 
+      // Add the new book
       books = books.concat(book)
 
+      // Check if author already exists
       const authorExists = authors.find(
         (author) => author.name === args.author
       )
 
+      // If author does not exist, create a new author
       if (!authorExists) {
         authors = authors.concat({
           name: args.author,
@@ -170,6 +184,23 @@ const resolvers = {
       }
 
       return book
+    },
+
+    // Exercise 8.7
+    editAuthor: (root, args) => {
+      const author = authors.find(
+        (author) => author.name === args.name
+      )
+
+      // Return null if author does not exist
+      if (!author) {
+        return null
+      }
+
+      // Update author's birth year
+      author.born = args.setBornTo
+
+      return author
     },
   },
 }
@@ -180,7 +211,9 @@ const server = new ApolloServer({
 })
 
 startStandaloneServer(server, {
-  listen: { port: 4000 },
+  listen: {
+    port: 4000,
+  },
 }).then(({ url }) => {
   console.log(`Server ready at ${url}`)
 })

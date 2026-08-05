@@ -1,37 +1,37 @@
 require("dotenv").config()
+
 const { ApolloServer } = require("@apollo/server")
 const { startStandaloneServer } = require("@apollo/server/standalone")
 
 const mongoose = require("mongoose")
 
-const MONGODB_URI = "mongodb+srv://Kisimoniaubain_db_user:FyCql0Up9m9AfRmZ@cluster0.ldjzf1u.mongodb.net/library-app?appName=Cluster0"
 
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log("✅ connected to MongoDB")
-  })
-  .catch((error) => {
-    console.log("❌ MongoDB connection error:")
-    console.log(error.message)
-  })
+const MONGODB_URI = process.env.MONGODB_URI
 
+console.log("Mongo URI:", MONGODB_URI)
 
-mongoose.connection.on("error", (error) => {
-  console.log("MongoDB runtime error:", error)
-})
 
 
 // Models
+
 const Book = mongoose.model(
   "Book",
   new mongoose.Schema({
-    title: String,
-    published: Number,
+    title: {
+      type: String,
+      required: true,
+    },
+
+    published: {
+      type: Number,
+      required: true,
+    },
+
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Author",
     },
+
     genres: [String],
   })
 )
@@ -40,13 +40,19 @@ const Book = mongoose.model(
 const Author = mongoose.model(
   "Author",
   new mongoose.Schema({
-    name: String,
+    name: {
+      type: String,
+      required: true,
+    },
+
     born: Number,
   })
 )
 
 
-// GraphQL schema
+
+// GraphQL Schema
+
 const typeDefs = `
 
   type Book {
@@ -56,25 +62,32 @@ const typeDefs = `
     genres: [String!]!
   }
 
+
   type Author {
     name: String!
     born: Int
     bookCount: Int!
   }
 
+
   type Query {
+
     bookCount: Int!
+
     authorCount: Int!
+
     allBooks(
       author: String
       genre: String
     ): [Book!]!
 
     allAuthors: [Author!]!
+
   }
 
 
   type Mutation {
+
     addBook(
       title: String!
       published: Int!
@@ -82,19 +95,25 @@ const typeDefs = `
       genres: [String!]!
     ): Book
 
+
     editAuthor(
       name: String!
       setBornTo: Int!
     ): Author
+
   }
 
 `
 
 
+
 // Resolvers
+
 const resolvers = {
 
+
   Query: {
+
 
     bookCount: async () => {
       return await Book.countDocuments({})
@@ -108,7 +127,8 @@ const resolvers = {
 
     allBooks: async (root, args) => {
 
-      let filter = {}
+      let query = {}
+
 
       if (args.author) {
 
@@ -116,37 +136,51 @@ const resolvers = {
           name: args.author,
         })
 
-        if (author) {
-          filter.author = author._id
+
+        if (!author) {
+          return []
         }
+
+
+        query.author = author._id
+
       }
+
 
 
       if (args.genre) {
 
-        filter.genres = {
+        query.genres = {
           $in: [args.genre],
         }
 
       }
 
 
-      return await Book.find(filter).populate("author")
+
+      return await Book
+        .find(query)
+        .populate("author")
 
     },
 
 
     allAuthors: async () => {
+
       return await Author.find({})
+
     },
 
+
   },
+
 
 
   Mutation: {
 
 
     addBook: async (root, args) => {
+
 
       let author = await Author.findOne({
         name: args.author,
@@ -162,6 +196,7 @@ const resolvers = {
         await author.save()
 
       }
+
 
 
       const book = new Book({
@@ -180,13 +215,17 @@ const resolvers = {
       await book.save()
 
 
-      return await Book.findById(book._id)
+
+      return await Book
+        .findById(book._id)
         .populate("author")
 
     },
 
 
+
     editAuthor: async (root, args) => {
+
 
       const author = await Author.findOne({
         name: args.name,
@@ -200,6 +239,7 @@ const resolvers = {
 
       author.born = args.setBornTo
 
+
       await author.save()
 
 
@@ -207,43 +247,71 @@ const resolvers = {
 
     },
 
+
   },
+
 
 
   Author: {
 
+
     bookCount: async (root) => {
+
 
       const books = await Book.find({
         author: root._id,
       })
 
+
       return books.length
 
     },
 
+
   },
+
 
 }
 
 
 
-// Start Apollo Server
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-})
+// Start server after MongoDB connection
+
+const startServer = async () => {
+
+  try {
+
+    await mongoose.connect(MONGODB_URI)
+
+    console.log("✅ connected to MongoDB")
 
 
-startStandaloneServer(server, {
+    const server = new ApolloServer({
+      typeDefs,
+      resolvers,
+    })
 
-  listen: {
-    port: 4000,
-  },
 
-})
-.then(({ url }) => {
+    const { url } = await startStandaloneServer(server, {
 
-  console.log(`Server ready at ${url}`)
+      listen: {
+        port: 4000,
+      },
 
-})
+    })
+
+
+    console.log(`Server ready at ${url}`)
+
+
+  } catch (error) {
+
+    console.log("❌ Server startup error:")
+    console.log(error.message)
+
+  }
+
+}
+
+
+startServer()

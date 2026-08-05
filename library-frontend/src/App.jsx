@@ -1,9 +1,10 @@
-import { useState } from "react"
-import Authors from "./components/Authors"
-import Books from "./components/Books"
+import { useState } from "react";
+import Authors from "./components/Authors";
+import Books from "./components/Books";
+import NewBook from "./components/NewBook";
 
 const App = () => {
-  const [page, setPage] = useState("authors")
+  const [page, setPage] = useState("authors");
 
   return (
     <div>
@@ -15,10 +16,15 @@ const App = () => {
         books
       </button>
 
+      <button onClick={() => setPage("add")}>
+        add book
+      </button>
+
       <Authors show={page === "authors"} />
       <Books show={page === "books"} />
+      <NewBook show={page === "add"} />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;

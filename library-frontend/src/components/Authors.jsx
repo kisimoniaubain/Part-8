@@ -5,7 +5,6 @@ import { ALL_AUTHORS, EDIT_AUTHOR } from "../queries"
 const Authors = ({ show }) => {
   const result = useQuery(ALL_AUTHORS)
 
-  const [name, setName] = useState("")
   const [born, setBorn] = useState("")
 
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
@@ -20,6 +19,10 @@ const Authors = ({ show }) => {
     return <div>loading...</div>
   }
 
+  const authors = result.data.allAuthors
+
+  const [name, setName] = useState(authors[0]?.name || "")
+
   const submit = async (event) => {
     event.preventDefault()
 
@@ -30,7 +33,6 @@ const Authors = ({ show }) => {
       },
     })
 
-    setName("")
     setBorn("")
   }
 
@@ -46,7 +48,7 @@ const Authors = ({ show }) => {
             <th>books</th>
           </tr>
 
-          {result.data.allAuthors.map((author) => (
+          {authors.map((author) => (
             <tr key={author.name}>
               <td>{author.name}</td>
               <td>{author.born}</td>
@@ -61,18 +63,16 @@ const Authors = ({ show }) => {
       <form onSubmit={submit}>
         <div>
           name
-          <select
-            value={name}
-            onChange={({ target }) => setName(target.value)}
-          >
-            <option value="">Select author</option>
-
-            {result.data.allAuthors.map((author) => (
-              <option key={author.name} value={author.name}>
-                {author.name}
-              </option>
-            ))}
-          </select>
+        <select
+          value={name || result.data.allAuthors[0].name}
+          onChange={({ target }) => setName(target.value)}
+        >
+          {result.data.allAuthors.map((author) => (
+            <option key={author.name} value={author.name}>
+              {author.name}
+            </option>
+          ))}
+        </select>
         </div>
 
         <div>

@@ -2,7 +2,7 @@ require("dotenv").config()
 
 const { ApolloServer } = require("@apollo/server")
 const { startStandaloneServer } = require("@apollo/server/standalone")
-
+const { GraphQLError } = require("graphql")
 const mongoose = require("mongoose")
 
 
@@ -12,14 +12,18 @@ console.log("Mongo URI:", MONGODB_URI)
 
 
 
+// =====================
 // Models
+// =====================
 
 const Book = mongoose.model(
   "Book",
   new mongoose.Schema({
+
     title: {
       type: String,
       required: true,
+      minlength: 5,
     },
 
     published: {
@@ -30,28 +34,39 @@ const Book = mongoose.model(
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Author",
+      required: true,
     },
 
-    genres: [String],
+    genres: {
+      type: [String],
+      required: true,
+    },
+
   })
 )
+
 
 
 const Author = mongoose.model(
   "Author",
   new mongoose.Schema({
+
     name: {
       type: String,
       required: true,
+      minlength: 4,
     },
 
     born: Number,
+
   })
 )
 
 
 
+// =====================
 // GraphQL Schema
+// =====================
 
 const typeDefs = `
 
@@ -107,13 +122,14 @@ const typeDefs = `
 
 
 
+// =====================
 // Resolvers
+// =====================
 
 const resolvers = {
 
 
   Query: {
-
 
     bookCount: async () => {
       return await Book.countDocuments({})
@@ -165,12 +181,12 @@ const resolvers = {
     },
 
 
+
     allAuthors: async () => {
 
       return await Author.find({})
 
     },
-
 
   },
 
@@ -181,44 +197,65 @@ const resolvers = {
 
     addBook: async (root, args) => {
 
-
-      let author = await Author.findOne({
-        name: args.author,
-      })
+      try {
 
 
-      if (!author) {
-
-        author = new Author({
+        let author = await Author.findOne({
           name: args.author,
         })
 
-        await author.save()
+
+
+        if (!author) {
+
+          author = new Author({
+            name: args.author,
+          })
+
+
+          await author.save()
+
+        }
+
+
+
+        const book = new Book({
+
+          title: args.title,
+
+          published: args.published,
+
+          genres: args.genres,
+
+          author: author._id,
+
+        })
+
+
+
+        await book.save()
+
+
+
+        return await Book
+          .findById(book._id)
+          .populate("author")
+
+
+
+      } catch (error) {
+
+
+        throw new GraphQLError(
+          "Creating the book failed: " + error.message,
+          {
+            extensions: {
+              code: "BAD_USER_INPUT",
+            },
+          }
+        )
 
       }
-
-
-
-      const book = new Book({
-
-        title: args.title,
-
-        published: args.published,
-
-        genres: args.genres,
-
-        author: author._id,
-
-      })
-
-
-      await book.save()
-
-
-
-      return await Book
-        .findById(book._id)
-        .populate("author")
 
     },
 
@@ -235,6 +272,7 @@ const resolvers = {
       if (!author) {
         return null
       }
+
 
 
       author.born = args.setBornTo
@@ -257,7 +295,6 @@ const resolvers = {
 
     bookCount: async (root) => {
 
-
       const books = await Book.find({
         author: root._id,
       })
@@ -275,21 +312,27 @@ const resolvers = {
 
 
 
-// Start server after MongoDB connection
+// =====================
+// Start Server
+// =====================
 
 const startServer = async () => {
 
   try {
 
+
     await mongoose.connect(MONGODB_URI)
 
+
     console.log("✅ connected to MongoDB")
+
 
 
     const server = new ApolloServer({
       typeDefs,
       resolvers,
     })
+
 
 
     const { url } = await startStandaloneServer(server, {
@@ -301,17 +344,22 @@ const startServer = async () => {
     })
 
 
+
     console.log(`Server ready at ${url}`)
+
 
 
   } catch (error) {
 
+
     console.log("❌ Server startup error:")
     console.log(error.message)
+
 
   }
 
 }
+
 
 
 startServer()

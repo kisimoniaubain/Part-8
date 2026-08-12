@@ -6,6 +6,7 @@ const Authors = ({ show }) => {
   const result = useQuery(ALL_AUTHORS)
 
   const [born, setBorn] = useState("")
+  const [name, setName] = useState("")
 
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
     refetchQueries: [{ query: ALL_AUTHORS }],
@@ -21,14 +22,14 @@ const Authors = ({ show }) => {
 
   const authors = result.data.allAuthors
 
-  const [name, setName] = useState(authors[0]?.name || "")
+  const selectedName = name || authors[0]?.name || ""
 
   const submit = async (event) => {
     event.preventDefault()
 
     await editAuthor({
       variables: {
-        name,
+        name: selectedName,
         setBornTo: Number(born),
       },
     })
@@ -63,16 +64,16 @@ const Authors = ({ show }) => {
       <form onSubmit={submit}>
         <div>
           name
-        <select
-          value={name || result.data.allAuthors[0].name}
-          onChange={({ target }) => setName(target.value)}
-        >
-          {result.data.allAuthors.map((author) => (
-            <option key={author.name} value={author.name}>
-              {author.name}
-            </option>
-          ))}
-        </select>
+          <select
+            value={selectedName}
+            onChange={({ target }) => setName(target.value)}
+          >
+            {authors.map((author) => (
+              <option key={author.name} value={author.name}>
+                {author.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

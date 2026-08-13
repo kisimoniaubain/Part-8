@@ -7,6 +7,7 @@ const NewBook = ({ show }) => {
   const [author, setAuthor] = useState("")
   const [published, setPublished] = useState("")
   const [genre, setGenre] = useState("")
+  const [genres, setGenres] = useState([])
 
   const [addBook] = useMutation(ADD_BOOK, {
     refetchQueries: [
@@ -31,7 +32,7 @@ const NewBook = ({ show }) => {
         title,
         author,
         published: Number(published),
-        genres: [genre],
+        genres,
       },
     })
 
@@ -39,6 +40,14 @@ const NewBook = ({ show }) => {
     setAuthor("")
     setPublished("")
     setGenre("")
+    setGenres([])
+  }
+
+  const addGenre = () => {
+    if (genre.trim() !== "") {
+      setGenres([...genres, genre.trim()])
+      setGenre("")
+    }
   }
 
   return (
@@ -47,24 +56,27 @@ const NewBook = ({ show }) => {
 
       <form onSubmit={submit}>
         <div>
-          title
+          <label htmlFor="title">title</label>
           <input
+            id="title"
             value={title}
             onChange={({ target }) => setTitle(target.value)}
           />
         </div>
 
         <div>
-          author
+          <label htmlFor="author">author</label>
           <input
+            id="author"
             value={author}
             onChange={({ target }) => setAuthor(target.value)}
           />
         </div>
 
         <div>
-          published
+          <label htmlFor="published">published</label>
           <input
+            id="published"
             type="number"
             value={published}
             onChange={({ target }) => setPublished(target.value)}
@@ -72,15 +84,29 @@ const NewBook = ({ show }) => {
         </div>
 
         <div>
-          genre
+          <label htmlFor="genre">genre</label>
           <input
+            id="genre"
             value={genre}
             onChange={({ target }) => setGenre(target.value)}
           />
+
+          <button
+            type="button"
+            onClick={addGenre}
+          >
+            add genre
+          </button>
         </div>
 
+        {genres.length > 0 && (
+          <div>
+            genres: {genres.join(", ")}
+          </div>
+        )}
+
         <button type="submit">
-          add book
+          create book
         </button>
       </form>
     </div>

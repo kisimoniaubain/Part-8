@@ -62,68 +62,70 @@ const Author = mongoose.model(
 
 const typeDefs = `
 
-  type Book {
+type Book {
+  id: ID!
+  title: String!
+  published: Int!
+  author: Author!
+  genres: [String!]!
+}
+
+type Author {
+  id: ID!
+  name: String!
+  born: Int
+  bookCount: Int!
+}
+
+type User {
+  username: String!
+  favoriteGenre: String!
+  id: ID!
+}
+
+type Token {
+  value: String!
+}
+
+type Query {
+  bookCount: Int!
+  authorCount: Int!
+
+  allBooks(
+    author: String
+    genre: String
+  ): [Book!]!
+
+  allAuthors: [Author!]!
+
+  me: User
+}
+
+type Mutation {
+  addBook(
     title: String!
     published: Int!
-    author: Author!
+    author: String!
     genres: [String!]!
-  }
+  ): Book
 
-  type Author {
+  editAuthor(
     name: String!
-    born: Int
-    bookCount: Int!
-  }
+    setBornTo: Int!
+  ): Author
 
-  type User {
+  createUser(
     username: String!
     favoriteGenre: String!
-    id: ID!
-  }
+  ): User
 
-  type Token {
-    value: String!
-  }
+  login(
+    username: String!
+    password: String!
+  ): Token
 
-  type Query {
-    bookCount: Int!
-    authorCount: Int!
-
-    allBooks(
-      author: String
-      genre: String
-    ): [Book!]!
-
-    allAuthors: [Author!]!
-
-    me: User
-  }
-
-  type Mutation {
-    addBook(
-      title: String!
-      published: Int!
-      author: String!
-      genres: [String!]!
-    ): Book
-
-    editAuthor(
-      name: String!
-      setBornTo: Int!
-    ): Author
-
-    createUser(
-      username: String!
-      favoriteGenre: String!
-    ): User
-
-    login(
-      username: String!
-      password: String!
-    ): Token
-
-    _resetDatabase: Boolean
-  }
+  _resetDatabase: Boolean
+}
 `
 
 // =====================
@@ -133,18 +135,25 @@ const typeDefs = `
 const resolvers = {
   Query: {
     me: async (root, args, context) => {
+      console.log("[GraphQL] me query")
       return context.currentUser
     },
 
     bookCount: async () => {
-      return await Book.countDocuments({})
+      const count = await Book.countDocuments({})
+      console.log("[GraphQL] bookCount:", count)
+      return count
     },
 
     authorCount: async () => {
-      return await Author.countDocuments({})
+      const count = await Author.countDocuments({})
+      console.log("[GraphQL] authorCount:", count)
+      return count
     },
 
     allBooks: async (root, args) => {
+      console.log("[GraphQL] allBooks args:", args)
+
       let query = {}
 
       if (args.author) {
@@ -165,11 +174,23 @@ const resolvers = {
         }
       }
 
-      return await Book.find(query).populate("author")
+      const books = await Book.find(query).populate("author")
+
+      console.log("[GraphQL] allBooks result:", books.length)
+
+      return books
     },
 
     allAuthors: async () => {
-      return await Author.find({})
+      const authors = await Author.find({})
+
+      console.log(
+        "[GraphQL] allAuthors result:",
+        authors.length,
+        authors.map((author) => author.name)
+      )
+
+      return authors
     },
   },
 
@@ -179,6 +200,8 @@ const resolvers = {
     // =====================
 
     createUser: async (root, args) => {
+      console.log("[GraphQL] createUser:", args.username)
+
       const user = new User({
         username: args.username,
         favoriteGenre: args.favoriteGenre,
@@ -192,6 +215,8 @@ const resolvers = {
     // =====================
 
     _resetDatabase: async () => {
+      console.log("[GraphQL] RESET DATABASE")
+
       if (process.env.NODE_ENV !== "test") {
         throw new GraphQLError(
           "_resetDatabase is only available in test mode"
@@ -202,6 +227,8 @@ const resolvers = {
       await Book.deleteMany({})
       await User.deleteMany({})
 
+      console.log("[GraphQL] Database reset complete")
+
       return true
     },
 
@@ -210,6 +237,8 @@ const resolvers = {
     // =====================
 
     login: async (root, args) => {
+      console.log("[GraphQL] login:", args.username)
+
       const user = await User.findOne({
         username: args.username,
       })
@@ -222,7 +251,6 @@ const resolvers = {
         })
       }
 
-      // Hardcoded password for the exercise
       if (args.password !== "secret") {
         throw new GraphQLError("Invalid password", {
           extensions: {
@@ -246,6 +274,8 @@ const resolvers = {
     // =====================
 
     addBook: async (root, args, context) => {
+      console.log("[GraphQL] addBook:", args.title, args.author)
+
       if (!context.currentUser) {
         throw new GraphQLError("not authenticated", {
           extensions: {
@@ -260,6 +290,8 @@ const resolvers = {
         })
 
         if (!author) {
+          console.log("[GraphQL] Creating author:", args.author)
+
           author = new Author({
             name: args.author,
           })
@@ -276,10 +308,21 @@ const resolvers = {
 
         await book.save()
 
-        return await Book
-          .findById(book._id)
-          .populate("author")
+        const savedBook = await Book.findById(book._id).populate(
+          "author"
+        )
+
+        console.log(
+          "[GraphQL] Book created:",
+          savedBook.title,
+          "by",
+          savedBook.author.name
+        )
+
+        return savedBook
       } catch (error) {
+        console.log("[GraphQL] addBook ERROR:", error)
+
         throw new GraphQLError(
           "Creating the book failed: " + error.message,
           {
@@ -321,17 +364,25 @@ const resolvers = {
   },
 
   // =====================
-  // Author resolver
+  // ID resolvers
   // =====================
 
+  Book: {
+    id: (root) => root._id.toString(),
+  },
+
   Author: {
+    id: (root) => root._id.toString(),
+
     bookCount: async (root) => {
-      const books = await Book.find({
+      return await Book.countDocuments({
         author: root._id,
       })
-
-      return books.length
     },
+  },
+
+  User: {
+    id: (root) => root._id.toString(),
   },
 }
 
@@ -352,12 +403,8 @@ const startServer = async () => {
 
     const { url } = await startStandaloneServer(server, {
       listen: {
-        port: 4000,
+        port: process.env.PORT || 4000,
       },
-
-      // =====================
-      // Authentication context
-      // =====================
 
       context: async ({ req }) => {
         const authorization = req.headers.authorization
@@ -382,6 +429,7 @@ const startServer = async () => {
             currentUser,
           }
         } catch (error) {
+          console.log("[GraphQL] Authentication failed")
           return {}
         }
       },
@@ -390,7 +438,8 @@ const startServer = async () => {
     console.log(`Server ready at ${url}`)
   } catch (error) {
     console.log("❌ Server startup error:")
-    console.log(error.message)
+    console.log(error)
+    process.exit(1)
   }
 }
 

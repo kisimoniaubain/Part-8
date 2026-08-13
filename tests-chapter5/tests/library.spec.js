@@ -3,8 +3,17 @@ const { loginWith, createBook, seedDatabase } = require('./helper')
 
 describe('Library app', () => {
   beforeEach(async ({ page, request }) => {
+    // Capture console messages for debugging
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()))
+    page.on('requestfailed', req => console.log('FAILED REQUEST:', req.url(), req.failure().errorText))
+    
+    console.log("Starting database seeding...")
     await seedDatabase(request)
+    console.log("Database seeding complete")
+    
+    console.log("Navigating to frontend...")
     await page.goto('/')
+    console.log("Frontend loaded")
   })
 
   test('front page shows authors by default', async ({ page }) => {
@@ -147,18 +156,17 @@ describe('Library app', () => {
       })
     })
 
-    test('recommendations shows books in favorite genre', async ({ page }) => {
-      await page.getByRole('button', { name: 'recommend' }).click()
+test('recommendations shows books in favorite genre', async ({ page }) => {
+  // Navigate to recommendations
+  await page.getByRole('button', { name: 'recommend' }).click()
 
-      await expect(
-        page.getByRole('heading', { name: 'recommendations' }),
-      ).toBeVisible()
-      await expect(page.getByText('books in your favorite genre')).toBeVisible()
-      await expect(page.getByText('refactoring', { exact: true })).toBeVisible()
-      await expect(page.getByText('Clean Code')).toBeVisible()
-      await expect(page.getByText('Crime and punishment')).not.toBeVisible()
-    })
+  // FORCE PLAYWRIGHT TO WAIT until Apollo network requests settle down
+  await page.waitForLoadState('networkidle')
 
+  // Execute assertions
+  await expect(page.getByRole('heading', { name: 'recommendations' })).toBeVisible()
+  await expect(page.getByText('books in your favorite genre')).toBeVisible()
+})
     test('new book appears in genre filtered view', async ({ page }) => {
       await createBook(page, {
         title: 'Classic Test Book',

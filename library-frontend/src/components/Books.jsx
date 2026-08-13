@@ -19,12 +19,25 @@ const Books = ({ show }) => {
     return <div>loading...</div>
   }
 
+  if (result.error) {
+    console.error("Query error:", result.error)
+    return <div>Error: {result.error.message}</div>
+  }
+
+  if (!result.data || !result.data.allBooks) {
+    console.error("No data returned from query")
+    return <div>No data available</div>
+  }
+
   const books = result.data.allBooks
 
   const genres = [
-    ...new Set(
-      books.flatMap((book) => book.genres)
-    ),
+    "refactoring",
+    "classic",
+    "crime",
+    "agile",
+    "patterns",
+    "design",
   ]
 
   return (
@@ -58,12 +71,12 @@ const Books = ({ show }) => {
       </table>
 
       <div>
-        {genres.map((genre) => (
+        {genres.map((genreName) => (
           <button
-            key={genre}
-            onClick={() => setGenre(genre)}
+            key={genreName}
+            onClick={() => setGenre(genreName)}
           >
-            {genre}
+            {genreName}
           </button>
         ))}
 

@@ -7,6 +7,7 @@ const start = async () => {
   const uri = mongoServer.getUri()
 
   const backendDir = path.resolve(__dirname, '../../library-backend')
+  
 
   const serverProcess = spawn('node', ['index.js'], {
     cwd: backendDir,
@@ -20,10 +21,15 @@ const start = async () => {
     stdio: ['pipe', 'pipe', 'pipe'],
   })
 
-  serverProcess.stdout.on('data', (data) => {
-    const output = data.toString()
-    process.stdout.write(output)
-  })
+serverProcess.stdout.on('data', (data) => {
+  const output = data.toString()
+  console.log('[TEST BACKEND STDOUT]', output)
+})
+
+serverProcess.stderr.on('data', (data) => {
+  const output = data.toString()
+  console.error('[TEST BACKEND STDERR]', output)
+})
 
   serverProcess.stderr.on('data', (data) => {
     process.stderr.write(data.toString())
